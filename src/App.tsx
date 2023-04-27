@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import reactLogo from './assets/react.svg'
 import { SKDB } from 'skdb'
-import dump from './dump.sql?raw'
+import dump from './skdb-1682625202006.sql?raw'
 import './App.css'
 
 function App() {
@@ -14,28 +14,30 @@ function App() {
       // @ts-ignore
       window.skdb = skdb
 
+      // TODO - comment in -> will fail with "invariant violation: Chr called on invalid Unicode code point: 55356"
+      // const res2 = skdb.sqlRaw(dump)
+
       const stmnts = dump
         .split(';\n')
         .filter((_) => _.trim() !== '')
         .map((_) => _ + ';')
 
+      console.log(`Running ${stmnts.length} statements...`)
+
+      let i = 0
       for (const stmnt of stmnts) {
+        i++
+        const progress = (i / stmnts.length) * 100
+
         const res = skdb.sql(stmnt)
         // console.log(stmnt)
         // console.log(res)
+
+        if (i % 1000 === 0) {
+          printProgress(progress)
+          await new Promise((resolve) => setTimeout(resolve, 0))
+        }
       }
-
-      const testStmt = `\
-      select id, name, ownerId, ownerName, colorsString, imageUrl, 'LibraryPlaylist' as _tag, trackCount
-      from view__playlists_with_track_counts
-      order by name ASC;`
-
-      // ERROR -> this returns a "null row" but should only return a single row
-      // 0: {id: null, name: null, ownerId: null, ownerName: null, colorsString: null, …}
-      // 1: {id: 'podcast:playlist:clgz9riqw000d3b6emzyjak9r', name: 'VISION Radio', ownerId: 'TODO', ownerName: 'TODO', colorsString: null, …}
-
-      const res = skdb.sql(testStmt)
-      console.log(res)
     }
 
     runSKDB()
@@ -60,3 +62,14 @@ function App() {
 }
 
 export default App
+
+/** Print as:
+ * ===_________________
+ * =========___________
+ */
+const printProgress = (progress: number) => {
+  const width = 40
+  const percent = progress.toFixed(2).padStart(6, ' ')
+  const bar = '='.repeat((progress / 100) * width).padEnd(width, '_')
+  console.log(`${bar} ${percent}%`)
+}
